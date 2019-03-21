@@ -1,8 +1,8 @@
 # Photoshop Move Layers Script (Move Layers.jsx)
 
-![](readme-images/move-layers-photoshop-script.gif)
-
 Alternative to moving layers by dragging in the `Layers panel`.
+
+![](readme-images/move-layers-photoshop-script.gif)
 
 
 ## Usage
@@ -10,20 +10,26 @@ Alternative to moving layers by dragging in the `Layers panel`.
 1. Select your input layer(s) → _Run the script for the first time_
 2. Select your destination layer → _Run the script for the second time_
 
+## Super advanced usage...
 
-> The script writes 2 history steps per move:
-> 1. "Move Layers Script 1/2" -> The prep
-> 2. "Move Layers Script 2/2" -> The move
+> Added in v1.1.
+
+If you make a selection with the marquee tool anytime before the second step and the layers are aligned to the center of that selection as well as moved in the layer stack.
+
+## The script writes 2 history steps per move
+1. "Move Layers Script 1/2" → The prep
+2. "Move Layers Script 2/2" → The move
+
+### Known issues
+- The scroll position may shift around a bit at times. I would say it's negligible....
 
 ## Selecting layers in the document instead of the layers panel...
 
-Since the script only cares that you have layers selected, you can select layers in the document, run the script, then select another layer in the document and run the script again, without ever touching the layers panel.
-
-_This can be super handy if your layer structure is a mess._
+In addition to selecting layers in the layer panel, you can also select layers by directly clicking them in the document. Selecting layers in the document has some advantages, especially if your layer structure is a mess.
 
 ![](readme-images/move-layers-photoshop-script-2.gif)
 
-### A couple methods I'd recommend
+### A couple methods I'd recommend for selecting layers by clicking them in the document
 
 #### Move tool:
 
