@@ -1,4 +1,4 @@
-// Move Layers.jsx - Version 1.1.
+// Move Layers.jsx - Version 1.2
 // Alternative method for moving layers, because dragging layers can be terrible at times.
 
 // USAGE:
@@ -6,22 +6,22 @@
 //    - Run the script for the first time
 // 2. Select your destination layer
 //    - Run the script for the second time
-
-// The script writes 2 history steps per move:
-// 1. "Move Layers Script 1/2" → The prep
-// 2. "Move Layers Script 2/2" → The move
-
-// This also means you can undo the move phase with (Cmd+Z), select another
-// destination layer and run the script again, without having to
-// start all over again if you happen to move to the wrong location.
-
-// Known issues:
-// - The scroll position may shift around a bit at times. I would say it's negligible....
+// If you do a marquee selection before step 1, step 2 will center the layers to that selection.
+// This can be handy if you know the layers would get hidden behind layers in the current location + stack order. 
 
 // ########################################################
 
 // Changelog:
 // ==========
+
+// 1.2
+// - Changed the way layers are moved. It doesn't rely on Groups anymore.
+// - Layers are colored red in the first step and return to previous color in the second step
+// - Align to selection still relies on groups and will quietly fail if the layers can't be grouped in the dropped scope.
+//   - I guess I could make it more reliable by trying the align on before the move and then again after the move if the first try failed.
+//   - Marquee selection has to be made before step 1.
+// - Added a variable at the top of the script called "useAlignToSelection", which you can use to disable align to selection if you don't want to use it
+// - Scroll position is no longer affected
 
 // 1.1.
 // - Moved layer(s) are centered to the active marquee selection as a group.
@@ -32,145 +32,124 @@
 //     USAGE:
 //     1. Make a marquee selection in the document
 //     2. Select the layers you want to move → Run the script
-//           - You can also make the marquee selection here if you want...
+//           - You can also make the marquee selection here if you want... (Not in version 1.2)
 //     3. Select the destination layer → Run the script
+// - Known issue: The scroll position may shift around a bit at times. I would say it's negligible....
 
 // 1.0.
 // - First version. Basic functionality
+// - Known issue: The scroll position may shift around a bit at times. I would say it's negligible....
 
 
 #target photoshop
 
+var useAlignToSelection = true;
+
 var doc = app.activeDocument;
 var initialActiveLayer = doc.activeLayer;
-var tempGroupName = 'TempGroup (Move Layers Script)';
-var tempLayerName = 'TempLayer (Move Layers Script)';
-var tempGroup = getLayer( tempGroupName );
 
-var n = tempGroup === false ? '1' : '2';
-doc.suspendHistory("Move Layers Script "+ n +"/2", "init()");
+var scriptPath = new File($.fileName);
+var textFilePath = scriptPath.parent + "/" + scriptPath.name.substring(0, scriptPath.name.lastIndexOf('.')) + ".jsx - Layer IDs.txt";
+var layerIDs = readFile( textFilePath );
+
+init();
 
 function init() {
-  
+
   // *****
   //  1/2
   // *****
-  if ( tempGroup === false ) {
-    
-    app.runMenuItem( stringIDToTypeID('groupLayersEvent') );
-    doc.activeLayer.name = tempGroupName;
-    
-    // Starting from here, we make sure that the temp group is always collapsed after its created.
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // This part takes advantage of how a new group is automatically collapsed
-    // if the current layer selection (top level) has more than one layer.
-    
-    var tempFolder = doc.activeLayer;
-    
-    var selection_length = 0;
-    for ( var i=0; i < tempFolder.layers.length; i++ )
-    selection_length++;
-    
-    if ( selection_length < 2 ) {
-      var tempLayer = doc.artLayers.add();
-      tempLayer.move( tempFolder, ElementPlacement.INSIDE );
-      tempLayer.name = tempLayerName;
-      doc.activeLayer = tempLayer.parent;
-      app.runMenuItem( stringIDToTypeID('ungroupLayersEvent') );
-      app.runMenuItem( stringIDToTypeID('groupLayersEvent') );
-      doc.activeLayer.name = tempGroupName;
-    }
+  if ( !layerIDs ) {
+
+    paintRed();
+    writeFile( textFilePath, getSelectedLayers().id );
     
   }
   // *****
   //  2/2
   // *****
-  else{
-    
-    var activeLayer = initialActiveLayer;
-    
-    // If Temp layer is selected, undo the preparation...
-    if ( tempGroupName === activeLayer.name ) {
-      
-      app.runMenuItem( stringIDToTypeID('ungroupLayersEvent') );
-      
-    }
-    // Move...
-    else {
-      
-      var selectionBounds = selectionExists();
-			
-      // I don't quite understand why, but the selection + translate (align)
-      // somehow prevented the script from continuing. Works just fine
-      // without "suspendHistory" though. The other mysterious part about
-      // this is that if I made the selection before the prep phase, it
-      // failed. If I made the selection after the prep phase, it worked.
-      // But as it turns out, deselecting before align fixed the issue.
-      deselect();
-      
-      function deselect() {
-        function cTID(s) { return app.charIDToTypeID(s); };
-        function sTID(s) { return app.stringIDToTypeID(s); };
+  else {
 
-          var desc87 = new ActionDescriptor();
-              var ref33 = new ActionReference();
-              ref33.putProperty( cTID('Chnl'), cTID('fsel') );
-          desc87.putReference( cTID('null'), ref33 );
-          desc87.putEnumerated( cTID('T   '), cTID('Ordn'), cTID('None') );
-          executeAction( cTID('setd'), desc87, DialogModes.NO );
-      };
-      
-      if ( selectionBounds ) {
-        align( tempGroup, selectionBounds );
-      }
-      
-      tempGroup.move( activeLayer, ElementPlacement.PLACEBEFORE );
-      doc.activeLayer = tempGroup;
-      app.runMenuItem( stringIDToTypeID('ungroupLayersEvent') );
-      
+    executeAction( charIDToTypeID('undo'), undefined, DialogModes.NO ); // Undo the layer color
+    (new File( textFilePath )).remove();
+
+    if ( useAlignToSelection ) {
+      var selectionBounds = selectionExists();
     }
-    
-    // Get rid of temp layer if it was created in the first phase.
-    var tempLayer = getLayer( tempLayerName );
-    if ( tempLayer !== false ) tempLayer.remove();
+
+    var activeIndex = app.activeDocument.activeLayer.itemIndex;
+    buildSelectionWithIDs( layerIDs );
+
+    // MOVE LAYERS
+    var desc32 = new ActionDescriptor();
+      var ref13 = new ActionReference();
+      ref13.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+    desc32.putReference( charIDToTypeID('null'), ref13 );
+      var ref14 = new ActionReference();
+      ref14.putIndex( charIDToTypeID('Lyr '), activeIndex );
+    desc32.putReference( charIDToTypeID('T   '), ref14 );
+    desc32.putBoolean( charIDToTypeID('Adjs'), false );
+    desc32.putInteger( charIDToTypeID('Vrsn'), 5 );
+      var list5 = new ActionList();
+      for ( var i=0; i < layerIDs.length; i++ ) {
+        list5.putInteger( layerIDs[i] );
+      }
+    desc32.putList( charIDToTypeID('LyrI'), list5 );
+    try { executeAction( charIDToTypeID('move'), desc32, DialogModes.NO ); } catch(e) {}
+
+    // If doc has selection, align layers to selection as a group if it is possible to make a group.
+    // It may fail if the target layer scope is nested too deep inside groups, since there is a max nested group count.
+    if ( selectionBounds ) {
+      doc.suspendHistory("Align to selection", "alignToSelection()");
+      function alignToSelection() {
+        try { 
+          // GROUP
+          var desc1379 = new ActionDescriptor();
+            var ref410 = new ActionReference();
+            ref410.putClass( stringIDToTypeID('layerSection') );
+          desc1379.putReference( charIDToTypeID('null'), ref410 );
+            var ref411 = new ActionReference();
+            ref411.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+          desc1379.putReference( charIDToTypeID('From'), ref411 );
+          desc1379.putInteger( stringIDToTypeID('layerSectionStart'), 250 );
+          desc1379.putInteger( stringIDToTypeID('layerSectionEnd'), 251 );
+          desc1379.putString( charIDToTypeID('Nm  '), "Group 22" );
+          executeAction( charIDToTypeID('Mk  '), desc1379, DialogModes.NO );
+
+          align( app.activeDocument.activeLayer, selectionBounds );
+
+          // UNGROUP
+          var desc1382 = new ActionDescriptor();
+            var ref412 = new ActionReference();
+            ref412.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+          desc1382.putReference( charIDToTypeID('null'), ref412 );
+          executeAction( stringIDToTypeID('ungroupLayersEvent'), desc1382, DialogModes.NO );
+        } catch(e) {}
+      }
+    }
     
   }
   
+}
+
+function deselect() {
+  var desc87 = new ActionDescriptor();
+  var ref33 = new ActionReference();
+  ref33.putProperty( charIDToTypeID('Chnl'), charIDToTypeID('fsel') );
+  desc87.putReference( charIDToTypeID('null'), ref33 );
+  desc87.putEnumerated( charIDToTypeID('T   '), charIDToTypeID('Ordn'), charIDToTypeID('None') );
+  executeAction( charIDToTypeID('setd'), desc87, DialogModes.NO );
 }
 
 function selectionExists() {
 	
-	var selection = false;
-	try { selection = app.activeDocument.selection.bounds; } catch(e) {}
+  var selection = false;
+  try { 
+    selection = app.activeDocument.selection.bounds; 
+    deselect(); 
+  } catch(e) {}
+  return selection;
 	
-	return selection;
-	
-}
-
-function getLayer( layerName ) {
-  try {
-    
-    var select = charIDToTypeID( "slct" );
-    var actionDescriptor = new ActionDescriptor();
-    var idnull = charIDToTypeID( "null" );
-    var actionReference = new ActionReference();
-    var layer = charIDToTypeID( "Lyr " );
-    actionReference.putName( layer, layerName );
-    actionDescriptor.putReference( idnull, actionReference );
-    var makeVisibleID = charIDToTypeID( "MkVs" );
-    actionDescriptor.putBoolean( makeVisibleID, false );
-    var layerId = charIDToTypeID( "LyrI" );
-    var actionList = new ActionList();
-    actionList.putInteger( 1 );
-    actionDescriptor.putList( layerId, actionList );
-    executeAction( select, actionDescriptor, DialogModes.NO );
-    
-    return app.activeDocument.activeLayer;
-    
-  } catch(e) {
-    return false;
-  }
-  
 }
 
 function align( alignThisLayer, targetBounds ) {
@@ -204,4 +183,73 @@ function align( alignThisLayer, targetBounds ) {
   var translateY = target.offset.top - atl.offset.top - ( image_height/2 ) + ( target_height/2 );
   alignThisLayer.translate( translateX, translateY );
   
+}
+
+function buildSelectionWithIDs( ids ) {
+  for ( var i = 0; i < ids.length; i++ ) {
+    var add = (i===0) ? false : true;
+    var ref = new ActionReference();
+    ref.putIdentifier(charIDToTypeID('Lyr '), ids[i]);
+    var desc = new ActionDescriptor();
+    desc.putReference(charIDToTypeID('null'), ref);
+    if ( add ) desc.putEnumerated( stringIDToTypeID('selectionModifier'), stringIDToTypeID('selectionModifierType'), stringIDToTypeID('addToSelection'));
+    desc.putBoolean(charIDToTypeID('MkVs'), false);
+    executeAction(charIDToTypeID('slct'), desc, DialogModes.NO);
+  }
+}
+
+function paintRed() {
+  var desc206 = new ActionDescriptor();
+  var ref101 = new ActionReference();
+  ref101.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+  desc206.putReference( charIDToTypeID('null'), ref101 );
+  var desc207 = new ActionDescriptor();
+  desc207.putEnumerated( charIDToTypeID('Clr '), charIDToTypeID('Clr '), charIDToTypeID('Rd  ') );
+  desc206.putObject( charIDToTypeID('T   '), charIDToTypeID('Lyr '), desc207 );
+  executeAction( charIDToTypeID('setd'), desc206, DialogModes.NO );
+}
+
+function getSelectedLayers() {
+  var idxs = [];
+  var ids = [];
+  var ref = new ActionReference();
+  ref.putEnumerated( charIDToTypeID('Dcmn'), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+  var desc = executeActionGet(ref);
+  if ( desc.hasKey(stringIDToTypeID('targetLayers')) ) {
+    desc = desc.getList( stringIDToTypeID( 'targetLayers' ));
+    var c = desc.count;
+    for ( var i=0; i<c; i++ ) {
+      var n = 0; try { activeDocument.backgroundLayer; } catch(e) { n = 1; }
+      var idx = desc.getReference( i ).getIndex()+n;
+      n = n == 0 ? 1 : 0;
+      idxs.push( idx+n );
+      toIdRef = new ActionReference();
+      toIdRef.putIndex( charIDToTypeID("Lyr "), idx );
+      var id = executeActionGet(toIdRef).getInteger( stringIDToTypeID( "layerID" ));
+      ids.push( id );
+    }
+  }
+  return {
+    idx: idxs,
+    id: ids
+  };
+}
+
+function writeFile( filePath, array ) {
+	
+  var file = new File( filePath );
+  file.open('w');
+  file.writeln( array.join(',') );
+  file.close();
+	
+}
+
+function readFile( filePath ) {
+	
+  var file = new File( filePath ),
+  fileOpen = file.open('r');
+  var array = file.readln();
+  file.close();
+  return !fileOpen ? false : array.split(',');
+	
 }
