@@ -1,10 +1,10 @@
-- [Usage](#usage)
-- [Align to selection after move](#align-to-selection-after-move)
-- [Selecting layers in the document instead of the layers panel...](#selecting-layers-in-the-document-instead-of-the-layers-panel)
-  - [Move tool:](#move-tool)
-  - [Pretty much any other tool](#pretty-much-any-other-tool)
-- [Known issues](#known-issues)
-- [More Info](#more-info)
+- [Usage](#Usage)
+- [Align to selection after move](#Align-to-selection-after-move)
+- [Selecting layers in the document instead of the layers panel...](#Selecting-layers-in-the-document-instead-of-the-layers-panel)
+  - [Selecting with move tool:](#Selecting-with-move-tool)
+  - [Selecting layers without the move tool:](#Selecting-layers-without-the-move-tool)
+- [Known issues](#Known-issues)
+- [More Info](#More-Info)
 
 # Photoshop Move Layers Script (Move Layers.jsx) <!-- omit in toc -->
 
@@ -19,9 +19,11 @@ Alternative to moving layers by dragging in the `Layers panel`. Really handy if 
 1. Select your input layer(s) → _Run the script for the first time
 2. Select your destination layer → _Run the script for the second time
 
+> Warning: Don't do anything, except select the target layer between step 1 and 2.
+
 ## Align to selection after move
 
-If you make a selection with the marquee tool before step 1, the layers are centered to that selection after the move. This feature can be turned off by setting a variable called `useAlignToSelection` to `false`. Align to selection writes an extra history step.
+If you make a selection with the marquee tool before step 1, the layers are centered to that selection after the move. There shouldn't be a need to turn this behavior off in normal use, but do that by setting a variable called `useAlignToSelection` to `false`. 
 
 ## Selecting layers in the document instead of the layers panel...
 
@@ -29,7 +31,7 @@ In addition to selecting layers in the layer panel, you can also select layers b
 
 ![](readme-images/move-layers-photoshop-script-2.gif)
 
-### Move tool:
+### Selecting with move tool:
 
 1. Select `Move tool`
 2. `Cmd + Click` a layer in the document to select it.
@@ -39,9 +41,9 @@ This method goes through locked layers.
 
 _You can also add the modifier key `Shift` and select more layers._
 
-### Pretty much any other tool
+### Selecting layers without the move tool:
 
-I tend to use this method for the most part.
+I tend to use this method most of the time.
 
 1. `Cmd + Alt + Right click` a layer in the document with almost any tool active.
 
@@ -53,7 +55,7 @@ _You can also add the modifier key `Shift` and select more layers. Click a layer
 
 ## Known issues
 - ~~The scroll position may shift around a bit at times. I would say it's negligible....~~ Fixed in v.1.2.
-- In v.1.2. "Align to selection" will silently fail if it's unable to create a group in the target scope. This will happen if the scope has maximum allowed nested groups (10) already.
+- In v.1.2.-1.3. "Align to selection" will silently fail if it's unable to create a group in the target scope. This will happen if the scope has maximum allowed nested groups (10) already.
 
 ## More Info
 

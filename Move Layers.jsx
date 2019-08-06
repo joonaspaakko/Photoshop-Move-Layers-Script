@@ -1,4 +1,4 @@
-// Move Layers.jsx - Version 1.2
+// Move Layers.jsx - Version 1.3
 // Alternative method for moving layers, because dragging layers can be terrible at times.
 
 // USAGE:
@@ -13,6 +13,15 @@
 
 // Changelog:
 // ==========
+
+// 1.3
+// - Fixed an error with the target location index — This made v1.2. unusable. Woopsie...
+// - Changed to how the step is checked. 
+//   - I used to do it by removing the txt file holding the holding. So if the file existed, the current step would've been "2/2" and otherwise "1/2"
+//   - Now if the current history state is "1/2", then the script will execute step 2 and otherwise step 1. 
+//   - This change means you can undo once and run the script again, in case you happen to move layers in the wrong place, just like in v1.1.
+//   - This change also means you can't do anything except select the target layer between steps 1 and 2. Which in turn means you have to make the marquee selection before step 1 if you wish to use it.
+// - Removed the step where I painted the layers red before the move, but I figured it was unnecessary since they are already selected and highlighted.
 
 // 1.2
 // - Changed the way layers are moved. It doesn't rely on Groups anymore.
@@ -43,25 +52,27 @@
 
 #target photoshop
 
-var useAlignToSelection = true;
+var useAlignToSelection = true; // Aligns the layers to a marquee selection if one is active...
 
 var doc = app.activeDocument;
 var initialActiveLayer = doc.activeLayer;
+var activeIndex = initialActiveLayer.itemIndex;
+var activeHistory = app.activeDocument.activeHistoryState;
+var step2 = activeHistory.name === "Move Layers Script 1/2";
 
 var scriptPath = new File($.fileName);
 var textFilePath = scriptPath.parent + "/" + scriptPath.name.substring(0, scriptPath.name.lastIndexOf('.')) + ".jsx - Layer IDs.txt";
-var layerIDs = readFile( textFilePath );
 
-init();
+var n = !step2 ? '1' : '2';
+doc.suspendHistory("Move Layers Script "+ n +"/2", "init()");
 
 function init() {
 
   // *****
   //  1/2
   // *****
-  if ( !layerIDs ) {
+  if ( !step2 ) {
 
-    paintRed();
     writeFile( textFilePath, getSelectedLayers().id );
     
   }
@@ -70,15 +81,15 @@ function init() {
   // *****
   else {
 
-    executeAction( charIDToTypeID('undo'), undefined, DialogModes.NO ); // Undo the layer color
-    (new File( textFilePath )).remove();
+    var layerIDs = readFile( textFilePath );
+    buildSelectionWithIDs( layerIDs );
+    
+    // (new File( textFilePath )).remove();
 
     if ( useAlignToSelection ) {
       var selectionBounds = selectionExists();
     }
 
-    var activeIndex = app.activeDocument.activeLayer.itemIndex;
-    buildSelectionWithIDs( layerIDs );
 
     // MOVE LAYERS
     var desc32 = new ActionDescriptor();
@@ -86,6 +97,7 @@ function init() {
       ref13.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
     desc32.putReference( charIDToTypeID('null'), ref13 );
       var ref14 = new ActionReference();
+      // ref14.putIdentifier( charIDToTypeID( "Lyr " ), activeID );
       ref14.putIndex( charIDToTypeID('Lyr '), activeIndex );
     desc32.putReference( charIDToTypeID('T   '), ref14 );
     desc32.putBoolean( charIDToTypeID('Adjs'), false );
@@ -95,37 +107,34 @@ function init() {
         list5.putInteger( layerIDs[i] );
       }
     desc32.putList( charIDToTypeID('LyrI'), list5 );
-    try { executeAction( charIDToTypeID('move'), desc32, DialogModes.NO ); } catch(e) {}
+    try { executeAction( charIDToTypeID('move'), desc32, DialogModes.NO ); } catch(e) { alert( e );}
 
     // If doc has selection, align layers to selection as a group if it is possible to make a group.
     // It may fail if the target layer scope is nested too deep inside groups, since there is a max nested group count.
     if ( selectionBounds ) {
-      doc.suspendHistory("Align to selection", "alignToSelection()");
-      function alignToSelection() {
-        try { 
-          // GROUP
-          var desc1379 = new ActionDescriptor();
-            var ref410 = new ActionReference();
-            ref410.putClass( stringIDToTypeID('layerSection') );
-          desc1379.putReference( charIDToTypeID('null'), ref410 );
-            var ref411 = new ActionReference();
-            ref411.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
-          desc1379.putReference( charIDToTypeID('From'), ref411 );
-          desc1379.putInteger( stringIDToTypeID('layerSectionStart'), 250 );
-          desc1379.putInteger( stringIDToTypeID('layerSectionEnd'), 251 );
-          desc1379.putString( charIDToTypeID('Nm  '), "Group 22" );
-          executeAction( charIDToTypeID('Mk  '), desc1379, DialogModes.NO );
+      try { 
+        // GROUP
+        var desc1379 = new ActionDescriptor();
+          var ref410 = new ActionReference();
+          ref410.putClass( stringIDToTypeID('layerSection') );
+        desc1379.putReference( charIDToTypeID('null'), ref410 );
+          var ref411 = new ActionReference();
+          ref411.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+        desc1379.putReference( charIDToTypeID('From'), ref411 );
+        desc1379.putInteger( stringIDToTypeID('layerSectionStart'), 250 );
+        desc1379.putInteger( stringIDToTypeID('layerSectionEnd'), 251 );
+        desc1379.putString( charIDToTypeID('Nm  '), "Temp Group (Align)" );
+        executeAction( charIDToTypeID('Mk  '), desc1379, DialogModes.NO );
 
-          align( app.activeDocument.activeLayer, selectionBounds );
+        align( app.activeDocument.activeLayer, selectionBounds );
 
-          // UNGROUP
-          var desc1382 = new ActionDescriptor();
-            var ref412 = new ActionReference();
-            ref412.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
-          desc1382.putReference( charIDToTypeID('null'), ref412 );
-          executeAction( stringIDToTypeID('ungroupLayersEvent'), desc1382, DialogModes.NO );
-        } catch(e) {}
-      }
+        // UNGROUP
+        var desc1382 = new ActionDescriptor();
+          var ref412 = new ActionReference();
+          ref412.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+        desc1382.putReference( charIDToTypeID('null'), ref412 );
+        executeAction( stringIDToTypeID('ungroupLayersEvent'), desc1382, DialogModes.NO );
+      } catch(e) {}
     }
     
   }
