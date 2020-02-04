@@ -64,5 +64,5 @@ ____
 
 - This was written for Photoshop CC so I can’t guarantee it’ll work on anything older.
 - You’ll definitely want to assign this script a shortcut (or some other third party method). Otherwise it's not very useful.
-    - For Mac users I'd recommend this [Alfred Workflow](https://github.com/joonaspaakko/Photoshop-Illustrator-Script-Launcher-Using-Alfred).
+    - For Mac users I'd recommend this [Alfred Workflow](https://github.com/joonaspaakko/Photoshop-Illustrator-Script-Launcher-Using-Alfred). It does also make sense defining any script shortcuts through Alfred as well.
     - I personally have a button set to trigger this script in my [Elgato Stream Deck](https://www.elgato.com/en/gaming/stream-deck).

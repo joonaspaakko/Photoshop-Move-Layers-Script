@@ -15,6 +15,11 @@
 // Changelog:
 // ==========
 
+// 1.4.1
+// - A crude fix that makes sure the moved layers don't get a red layer color anymore
+//    - This is not the first time I've done this mistake... The temp group was painted red... and all its children got the red color as well. It's now been removed from the group entirely and only the fallback single layer marker gets painted red.
+// - Tested in PS CC 2019 (20.0.8)
+
 // 1.4
 // - I FINALLY brought back the way the script used to work up to version 1.1. First step creates a group. This makes the script way better to use.
 //   - The reason why I originally tried to get around using it was that the script would be utterly useless if the maximum level of nesting was reached
@@ -111,6 +116,7 @@ function init() {
       // step1marker.name = 'MOVING: ' + layers.names.join(', ');
       step1marker.name = tempLayerName;
       step1marker.move( activeLayer, ElementPlacement.PLACEBEFORE );
+      paintRed();
     }
     
     app.displayDialogs = displayDialogs;
@@ -122,7 +128,6 @@ function init() {
       markerId: doc.activeLayer.id
     };
     storeObj( data, tempDataName );
-    paintRed();
     
   }
   // *****
